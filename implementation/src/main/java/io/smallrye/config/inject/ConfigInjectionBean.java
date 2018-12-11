@@ -22,10 +22,12 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Member;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import javax.enterprise.context.Dependent;
 import javax.enterprise.context.spi.CreationalContext;
@@ -173,6 +175,21 @@ public class ConfigInjectionBean<T> implements Bean<T>, PassivationCapable {
         @Override
         public String defaultValue() {
             return "";
+        }
+
+        @Override
+        public boolean evaluateVariables() {
+            return false;
+        }
+
+        @Override
+        public ChronoUnit cacheTimeUnit() {
+            return ChronoUnit.SECONDS;
+        }
+
+        @Override
+        public long cacheFor() {
+            return 0;
         }
     }
 
