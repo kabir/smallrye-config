@@ -18,9 +18,11 @@ package io.smallrye.config;
 
 import static java.lang.reflect.Array.newInstance;
 
+import java.io.Closeable;
 import java.io.Serializable;
 import java.lang.reflect.Array;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -35,7 +37,9 @@ import java.util.OptionalDouble;
 import java.util.OptionalInt;
 import java.util.OptionalLong;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.function.IntFunction;
 import java.util.function.UnaryOperator;
 
@@ -45,11 +49,12 @@ import org.eclipse.microprofile.config.ConfigAccessorBuilder;
 import org.eclipse.microprofile.config.ConfigSnapshot;
 import org.eclipse.microprofile.config.spi.ConfigSource;
 import org.eclipse.microprofile.config.spi.Converter;
+import org.wildfly.common.expression.Expression;
 
 /**
  * @author <a href="http://jmesnil.net/">Jeff Mesnil</a> (c) 2017 Red Hat inc.
  */
-public class SmallRyeConfig implements Config, Serializable {
+public class SmallRyeConfig implements Config, Serializable, Closeable {
 
     static final Comparator<ConfigSource> CONFIG_SOURCE_COMPARATOR = new Comparator<ConfigSource>() {
         @Override
@@ -63,12 +68,47 @@ public class SmallRyeConfig implements Config, Serializable {
     };
 
     private final AtomicReference<List<ConfigSource>> configSourcesRef;
+    private final boolean expandVariables;
     private final Map<Type, Converter<?>> converters;
+    private final transient ConcurrentHashMap<String, Expression> exprCache = new ConcurrentHashMap<>();
+    private transient final ConfigExpander configExpander;
+    private Map<String, List<SmallryeConfigAccessor>> configAccessors = new HashMap<>();
+    private final Set<ConfigSource.ChangeSupport> registeredChangedSupport = new HashSet<>();
 
-    protected SmallRyeConfig(List<ConfigSource> configSources, Map<Type, Converter<?>> converters) {
+    private Consumer<Set<String>> cacheInvalidator = (Serializable & Consumer<Set<String>>) propertyNames -> {
+        for (Map.Entry<String, List<SmallryeConfigAccessor>> entry : configAccessors.entrySet()) {
+            if (propertyNames.contains(entry.getKey())) {
+                for (SmallryeConfigAccessor smallryeConfigAccessor : entry.getValue()) {
+                    smallryeConfigAccessor.invalidateCachedValue();
+                }
+            }
+        }
+    };
+
+    protected SmallRyeConfig(List<ConfigSource> configSources, Map<Type, Converter<?>> converters, boolean expandVariables) {
         configSourcesRef = new AtomicReference<>(Collections.unmodifiableList(configSources));
         this.converters = new HashMap<>(Converters.ALL_CONVERTERS);
         this.converters.putAll(converters);
+        this.expandVariables = expandVariables;
+        this.configExpander = new ConfigExpander(this);
+
+        for (ConfigSource configSource : configSources) {
+            ConfigSource.ChangeSupport changeSupport = configSource.onAttributeChange(cacheInvalidator);
+            registeredChangedSupport.add(changeSupport);
+        }
+    }
+
+    @Override
+    public void close() {
+        for (ConfigSource configSource : getConfigSources()) {
+            if (configSource instanceof AutoCloseable) {
+                try {
+                    ((AutoCloseable)configSource).close();
+                } catch (Exception e) {
+                }
+            }
+        }
+
     }
 
     // no @Override
@@ -121,7 +161,7 @@ public class SmallRyeConfig implements Config, Serializable {
                     // treat empty value as non-present
                     break;
                 }
-                return convert(value, aClass);
+                return convert(evaluate(value, expandVariables), aClass);
             }
         }
 
@@ -151,14 +191,40 @@ public class SmallRyeConfig implements Config, Serializable {
         throw new NoSuchElementException("Property " + name + " not found");
     }
 
+    private String evaluate(String value, boolean evaluateVariables) {
+        if (!evaluateVariables || value == null) {
+            return value;
+        }
+        final Expression compiled = exprCache.computeIfAbsent(value, str -> Expression.compile(str, Expression.Flag.NO_TRIM, Expression.Flag.NO_RECURSE_DEFAULT, Expression.Flag.LENIENT_SYNTAX));
+        String evaluateValue = compiled.evaluate(configExpander);
+        return evaluateValue;
+    }
+
     @Override
     public <T> Optional<T> getOptionalValue(String name, Class<T> aClass) {
         for (ConfigSource configSource : getConfigSources()) {
             String value = configSource.getValue(name);
             if (value != null) {
                 // treat empty value as non-present
-                return value.isEmpty() ? Optional.empty() : Optional.of(convert(value, aClass));
+                return value.isEmpty() ? Optional.empty() : Optional.of(convert(evaluate(value, expandVariables), aClass));
             }
+        }
+        return Optional.empty();
+    }
+
+    // non-spec
+    <T> Optional<T> getOptionalValue(String name, Class<T> aClass, boolean eval) {
+        try {
+            for (ConfigSource configSource : getConfigSources()) {
+                String value = configSource.getValue(name);
+                // treat empty value as null
+                if (value != null && value.length() > 0) {
+                    value = evaluate(value, eval);
+                    return Optional.of(convert(value, aClass));
+                }
+            }
+        } catch (NoSuchElementException e) {
+            return Optional.empty();
         }
         // value not found
         return Optional.empty();
@@ -252,5 +318,12 @@ public class SmallRyeConfig implements Config, Serializable {
     @Override
     public ConfigSnapshot snapshotFor(ConfigAccessor<?>... configValues) {
         return new SmallRyeConfigSnapshot(configValues);
+    }
+
+    public void addConfigAccessor(String propertyName, SmallryeConfigAccessor configAccessor) {
+        if (!configAccessors.containsKey(propertyName)) {
+            configAccessors.put(propertyName, new ArrayList<>());
+        }
+        configAccessors.get(propertyName).add(configAccessor);
     }
 }
