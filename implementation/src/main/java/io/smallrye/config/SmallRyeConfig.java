@@ -384,7 +384,13 @@ public class SmallRyeConfig implements Config, Serializable {
                     lateSources.add((ConfigurableConfigSource) source);
                 }
             }
-            lateSources.sort(Comparator.comparingInt(ConfigurableConfigSource::getOrdinal));
+            lateSources.sort((o1, o2) -> {
+                int result = Comparator.comparingInt(ConfigurableConfigSource::getOrdinal).compare(o1, o2);
+                if (result != 0) {
+                    return result;
+                }
+                return Comparator.comparing(ConfigurableConfigSource::getName).compare(o1, o2);
+            });
 
             ConfigSourceInterceptorWithPriority.raiseLoadPriority();
             final List<ConfigSourceInterceptorWithPriority> sourcesWithPriority = new ArrayList<>();
