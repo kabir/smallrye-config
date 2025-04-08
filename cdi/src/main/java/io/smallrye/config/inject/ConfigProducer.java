@@ -41,134 +41,148 @@ import io.smallrye.config.SmallRyeConfig;
 @ApplicationScoped
 public class ConfigProducer {
     @Produces
-    protected SmallRyeConfig getConfig() {
-        return ConfigProvider.getConfig(getContextClassLoader()).unwrap(SmallRyeConfig.class);
+    protected SmallRyeConfig getConfig(InjectionPoint ip) {
+        //return ConfigProvider.getConfig(getContextClassLoader()).unwrap(SmallRyeConfig.class);
+        //ClassLoader cl = ip.getMember().getDeclaringClass().getClassLoader();
+        ClassLoader cl = null;
+        if (ip.getBean() != null) {
+            System.out.println("---> Producing with bean");
+            cl = ip.getBean().getBeanClass().getClassLoader();
+        } else if (ip.getMember() != null) {
+            System.out.println("---> Producing with member");
+            cl = ip.getMember().getDeclaringClass().getClassLoader();
+        } else {
+            System.out.println("---> TCCL fallback");
+            cl = getContextClassLoader();
+        }
+
+        return ConfigProvider.getConfig(cl).unwrap(SmallRyeConfig.class);
     }
 
     @Dependent
     @Produces
     @ConfigProperty
     protected String produceStringConfigProperty(InjectionPoint ip) {
-        return ConfigProducerUtil.getValue(ip, getConfig());
+        return ConfigProducerUtil.getValue(ip, getConfig(ip));
     }
 
     @Dependent
     @Produces
     @ConfigProperty
     protected Long getLongValue(InjectionPoint ip) {
-        return ConfigProducerUtil.getValue(ip, getConfig());
+        return ConfigProducerUtil.getValue(ip, getConfig(ip));
     }
 
     @Dependent
     @Produces
     @ConfigProperty
     protected Integer getIntegerValue(InjectionPoint ip) {
-        return ConfigProducerUtil.getValue(ip, getConfig());
+        return ConfigProducerUtil.getValue(ip, getConfig(ip));
     }
 
     @Dependent
     @Produces
     @ConfigProperty
     protected Float produceFloatConfigProperty(InjectionPoint ip) {
-        return ConfigProducerUtil.getValue(ip, getConfig());
+        return ConfigProducerUtil.getValue(ip, getConfig(ip));
     }
 
     @Dependent
     @Produces
     @ConfigProperty
     protected Double produceDoubleConfigProperty(InjectionPoint ip) {
-        return ConfigProducerUtil.getValue(ip, getConfig());
+        return ConfigProducerUtil.getValue(ip, getConfig(ip));
     }
 
     @Dependent
     @Produces
     @ConfigProperty
     protected Boolean produceBooleanConfigProperty(InjectionPoint ip) {
-        return ConfigProducerUtil.getValue(ip, getConfig());
+        return ConfigProducerUtil.getValue(ip, getConfig(ip));
     }
 
     @Dependent
     @Produces
     @ConfigProperty
     protected Short produceShortConfigProperty(InjectionPoint ip) {
-        return ConfigProducerUtil.getValue(ip, getConfig());
+        return ConfigProducerUtil.getValue(ip, getConfig(ip));
     }
 
     @Dependent
     @Produces
     @ConfigProperty
     protected Byte produceByteConfigProperty(InjectionPoint ip) {
-        return ConfigProducerUtil.getValue(ip, getConfig());
+        return ConfigProducerUtil.getValue(ip, getConfig(ip));
     }
 
     @Dependent
     @Produces
     @ConfigProperty
     protected Character produceCharacterConfigProperty(InjectionPoint ip) {
-        return ConfigProducerUtil.getValue(ip, getConfig());
+        return ConfigProducerUtil.getValue(ip, getConfig(ip));
     }
 
     @Dependent
     @Produces
     @ConfigProperty
     protected <T> Optional<T> produceOptionalConfigProperty(InjectionPoint ip) {
-        return ConfigProducerUtil.getValue(ip, getConfig());
+        return ConfigProducerUtil.getValue(ip, getConfig(ip));
     }
 
     @Dependent
     @Produces
     @ConfigProperty
     protected <T> Supplier<T> produceSupplierConfigProperty(InjectionPoint ip) {
-        return () -> ConfigProducerUtil.getValue(ip, getConfig());
+        return () -> ConfigProducerUtil.getValue(ip, getConfig(ip));
     }
 
     @Dependent
     @Produces
     @ConfigProperty
     protected <T> Set<T> producesSetConfigProperty(InjectionPoint ip) {
-        return ConfigProducerUtil.getValue(ip, getConfig());
+        return ConfigProducerUtil.getValue(ip, getConfig(ip));
     }
 
     @Dependent
     @Produces
     @ConfigProperty
     protected <T> List<T> producesListConfigProperty(InjectionPoint ip) {
-        return ConfigProducerUtil.getValue(ip, getConfig());
+        return ConfigProducerUtil.getValue(ip, getConfig(ip));
     }
 
     @Dependent
     @Produces
     @ConfigProperty
     protected <K, V> Map<K, V> producesMapConfigProperty(InjectionPoint ip) {
-        return ConfigProducerUtil.getValue(ip, getConfig());
+        return ConfigProducerUtil.getValue(ip, getConfig(ip));
     }
 
     @Dependent
     @Produces
     @ConfigProperty
     protected OptionalInt produceOptionalIntConfigProperty(InjectionPoint ip) {
-        return ConfigProducerUtil.getValue(ip, getConfig());
+        return ConfigProducerUtil.getValue(ip, getConfig(ip));
     }
 
     @Dependent
     @Produces
     @ConfigProperty
     protected OptionalLong produceOptionalLongConfigProperty(InjectionPoint ip) {
-        return ConfigProducerUtil.getValue(ip, getConfig());
+        return ConfigProducerUtil.getValue(ip, getConfig(ip));
     }
 
     @Dependent
     @Produces
     @ConfigProperty
     protected OptionalDouble produceOptionalDoubleConfigProperty(InjectionPoint ip) {
-        return ConfigProducerUtil.getValue(ip, getConfig());
+        return ConfigProducerUtil.getValue(ip, getConfig(ip));
     }
 
     @Dependent
     @Produces
     @ConfigProperty
     protected ConfigValue produceConfigValue(InjectionPoint ip) {
-        return ConfigProducerUtil.getConfigValue(ip, getConfig());
+        return ConfigProducerUtil.getConfigValue(ip, getConfig(ip));
     }
 
     public static boolean isClassHandledByConfigProducer(Type requiredType) {
