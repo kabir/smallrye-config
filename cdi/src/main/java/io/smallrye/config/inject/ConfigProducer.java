@@ -23,8 +23,10 @@ import java.util.function.Supplier;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.Dependent;
+import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import jakarta.enterprise.inject.spi.InjectionPoint;
+import jakarta.inject.Inject;
 
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
@@ -40,9 +42,20 @@ import io.smallrye.config.SmallRyeConfig;
  */
 @ApplicationScoped
 public class ConfigProducer {
+
+    @Inject
+    Instance<ConfigProducerClassLoaderFactory> clFactory;
+
     @Produces
-    protected SmallRyeConfig getConfig() {
-        return ConfigProvider.getConfig(getContextClassLoader()).unwrap(SmallRyeConfig.class);
+    protected SmallRyeConfig getConfig(InjectionPoint ip) {
+        final ClassLoader cl;
+        Instance<ConfigProducerClassLoaderFactory> clFactory = this.clFactory.select();
+        if (clFactory.isUnsatisfied()) {
+            cl = getContextClassLoader();
+        } else {
+            cl = clFactory.get().getClassLoader(ip);
+        }
+        return ConfigProvider.getConfig(cl).unwrap(SmallRyeConfig.class);
     }
 
     @Dependent
