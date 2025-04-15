@@ -49,7 +49,7 @@ public class ConfigProducer {
     @Produces
     protected SmallRyeConfig getConfig(InjectionPoint ip) {
         final ClassLoader cl;
-        Instance<ConfigProducerClassLoaderFactory> clFactory = this.clFactory.select();
+        Instance<ConfigProducerClassLoaderFactory> clFactory = this.clFactory.select(ConfigProducerClassLoaderFactory.class);
         if (clFactory.isUnsatisfied()) {
             cl = getContextClassLoader();
         } else {
