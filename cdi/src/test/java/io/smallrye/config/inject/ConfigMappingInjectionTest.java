@@ -29,10 +29,15 @@ import io.smallrye.config.WithDefault;
 @ExtendWith(WeldJunit5Extension.class)
 class ConfigMappingInjectionTest {
     @WeldSetup
-    WeldInitiator weld = WeldInitiator
-            .from(ConfigExtension.class, ConfigMappingInjectionTest.class, Server.class, Client.class, ConfigMappingBean.class)
-            .inject(this)
-            .build();
+    WeldInitiator weld = getWeld();
+
+    protected WeldInitiator getWeld() {
+        return WeldInitiator
+                .from(ConfigExtension.class, ConfigMappingInjectionTest.class, Server.class, Client.class,
+                        ConfigMappingBean.class)
+                .inject(this)
+                .build();
+    }
 
     @Inject
     Server server;

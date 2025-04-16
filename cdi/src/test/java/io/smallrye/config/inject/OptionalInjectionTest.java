@@ -27,10 +27,14 @@ import io.smallrye.config.SmallRyeConfigBuilder;
 @ExtendWith(WeldJunit5Extension.class)
 class OptionalInjectionTest {
     @WeldSetup
-    WeldInitiator weld = WeldInitiator.from(ConfigExtension.class, OptionalInjectionTest.class)
-            .addBeans()
-            .inject(this)
-            .build();
+    WeldInitiator weld = createWeld();
+
+    protected WeldInitiator createWeld() {
+        return WeldInitiator.from(ConfigExtension.class, OptionalInjectionTest.class)
+                .addBeans()
+                .inject(this)
+                .build();
+    }
 
     @Inject
     @ConfigProperty(name = "optional.int.value")

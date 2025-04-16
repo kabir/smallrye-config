@@ -51,14 +51,15 @@ import jakarta.enterprise.inject.spi.configurator.AnnotatedTypeConfigurator;
 import jakarta.enterprise.util.Nonbinding;
 import jakarta.inject.Provider;
 
-import io.smallrye.config.ConfigMapping;
-import io.smallrye.config.ConfigMappings.ConfigClass;
-import io.smallrye.config.ConfigValidationException;
-import io.smallrye.config.SmallRyeConfig;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
 import org.eclipse.microprofile.config.inject.ConfigProperties;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+
+import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.ConfigMappings.ConfigClass;
+import io.smallrye.config.ConfigValidationException;
+import io.smallrye.config.SmallRyeConfig;
 
 /**
  * CDI Extension to produces Config bean.
@@ -231,8 +232,8 @@ public class ConfigExtension implements Extension {
             try {
                 Config ipConfig = config;
                 // Check if the value can be injected. This may cause duplicated config reads (to validate and to inject).
-                Instance<ConfigProducerClassLoaderFactory> clfInstance =
-                        beanManager.createInstance().select(ConfigProducerClassLoaderFactory.class);
+                Instance<ConfigProducerClassLoaderFactory> clfInstance = beanManager.createInstance()
+                        .select(ConfigProducerClassLoaderFactory.class);
                 if (!clfInstance.isUnsatisfied()) {
                     ConfigProducerClassLoaderFactory classLoaderFactory = clfInstance.get();
                     ClassLoader injectionPointCl = classLoaderFactory.getClassLoader(injectionPoint);

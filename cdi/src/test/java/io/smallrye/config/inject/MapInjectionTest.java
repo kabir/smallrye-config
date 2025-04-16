@@ -29,11 +29,15 @@ import io.smallrye.config.SmallRyeConfigBuilder;
 @ExtendWith(WeldJunit5Extension.class)
 public class MapInjectionTest {
     @WeldSetup
-    WeldInitiator weld = WeldInitiator.from(ConfigExtension.class, MapBean.class)
-            .addBeans()
-            .activate(ApplicationScoped.class)
-            .inject(this)
-            .build();
+    WeldInitiator weld = createWeld();
+
+    protected WeldInitiator createWeld() {
+        return WeldInitiator.from(ConfigExtension.class, MapBean.class)
+                .addBeans()
+                .activate(ApplicationScoped.class)
+                .inject(this)
+                .build();
+    }
 
     @Inject
     MapBean mapBean;
