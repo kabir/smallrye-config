@@ -51,14 +51,14 @@ import jakarta.enterprise.inject.spi.configurator.AnnotatedTypeConfigurator;
 import jakarta.enterprise.util.Nonbinding;
 import jakarta.inject.Provider;
 
-import org.eclipse.microprofile.config.ConfigProvider;
-import org.eclipse.microprofile.config.inject.ConfigProperties;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.ConfigMappings.ConfigClass;
 import io.smallrye.config.ConfigValidationException;
 import io.smallrye.config.SmallRyeConfig;
+import org.eclipse.microprofile.config.Config;
+import org.eclipse.microprofile.config.ConfigProvider;
+import org.eclipse.microprofile.config.inject.ConfigProperties;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 /**
  * CDI Extension to produces Config bean.
@@ -183,7 +183,7 @@ public class ConfigExtension implements Extension {
         configMappingBeans.forEach(mapping -> abd.addBean(new ConfigMappingInjectionBean<>(mapping, bm)));
     }
 
-    protected void validate(@Observes AfterDeploymentValidation adv) {
+    protected void validate(@Observes AfterDeploymentValidation adv, BeanManager beanManager) {
         SmallRyeConfig config = ConfigProvider.getConfig(getContextClassLoader()).unwrap(SmallRyeConfig.class);
         Set<String> configNames = StreamSupport.stream(config.getPropertyNames().spliterator(), false).collect(toSet());
         for (InjectionPoint injectionPoint : getConfigPropertyInjectionPoints()) {
@@ -229,8 +229,18 @@ public class ConfigExtension implements Extension {
             }
 
             try {
+                Config ipConfig = config;
                 // Check if the value can be injected. This may cause duplicated config reads (to validate and to inject).
-                ConfigProducerUtil.getValue(injectionPoint, config);
+                Instance<ConfigProducerClassLoaderFactory> clfInstance =
+                        beanManager.createInstance().select(ConfigProducerClassLoaderFactory.class);
+                if (!clfInstance.isUnsatisfied()) {
+                    ConfigProducerClassLoaderFactory classLoaderFactory = clfInstance.get();
+                    ClassLoader injectionPointCl = classLoaderFactory.getClassLoader(injectionPoint);
+                    if (injectionPointCl != getContextClassLoader()) {
+                        ipConfig = ConfigProvider.getConfig(injectionPointCl);
+                    }
+                }
+                ConfigProducerUtil.getValue(injectionPoint, ipConfig);
             } catch (Exception e) {
                 adv.addDeploymentProblem(InjectionMessages.msg.retrieveConfigFailure(name, formatInjectionPoint(injectionPoint),
                         e.getLocalizedMessage(), e));
